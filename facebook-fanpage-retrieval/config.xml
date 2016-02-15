@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config>
+
+	<general>
+		<fanpage>PrefsCuritiba</fanpage>
+		<accessToken>CAACEdEose0cBALEjZBCnLlSi1PBwlhxDDGG027RFz8gFJYBRgBaHusV96GFZCYZA3mbZAtNkrwusu1Lj9w1GJQ5AXVBrTEDjdhydmlKWcf3qp1787BZAQJBGZB3LcDjCx3p8R1GbufyytVzZAh0YNpaFMP2GwpGEoDUcycja0x1XpMKMdm55FOSIgQp2lDNwZCDb56nejd8r22rZCFbfg4nOr</accessToken>
+	</general>
+
+	<posts>
+		<!-- Value 0 means no limit for number of posts to be retrieved. -->
+		<quantity>100</quantity>
+		<since></since>
+		<until></until>
+	</posts>
+
+	<comments>
+		<!-- Value 0 means no limit for number of comments to be retrieved per post. -->
+		<quantity>100</quantity>
+	</comments>
+
+</config>
