@@ -1,11 +1,11 @@
-## Capitain America: Civil War - Data Analysis
+## Captain America: Civil War - Data Analysis
 
 **Author: [Douglas Cirqueira](https://br.linkedin.com/in/douglascirqueira)**
 
 **This project aims to evaluate which team is more popular based on Twitter data, #TeamCaptainAmerica or #TeamIronMan.**
 
 **Data**
-The data used to obtain the results is available on the files `tweets_captain.csv` and `tweets_ironman.csv`. Those tweets were obtained through the [Twitter REST API](https://dev.twitter.com/rest/public), using the following search queries:
+The data used to obtain the results is available on the files `tweets_captain.csv` and `tweets_ironman.csv`. Those tweets were obtained through the `search/tweets` endpoint from the [Twitter REST API](https://dev.twitter.com/rest/public), using the following search queries:
 
 - For Captain America: "#timecapitãoamérica OR #timecapitaoamerica OR #teamcap OR #teamcaptain OR #teamcaptainamerica OR #teamcapitain OR #teamcapitainamerica"
 
