@@ -33,22 +33,28 @@ def retrieve_posts(fanpage, since, until, oauth_access_token, max_number):
 	    since................Since when posts should be retrieved.
 	    until................Until when posts should be retrieved.
 	    oauth_access_token...Facebook API access token.
-	    max_number...........Maximum number of posts to be retrieved. If 0, all posts will be retrieved.
+	    max_number...........Maximum number of request to retrieve posts. If 0, all posts will be retrieved.
 	"""
 
 	if since != None and until != None:
 
+		if since == None:
+			since = ''
+
+		if until == None:
+			until = ''
+
 		request_url = '''
-					 https://graph.facebook.com/v2.0/%s/posts?summary=1&filter=stream&fields=likes.summary(true),comments.summary(true),shares,message,from,type,status_type,picture,link,source,name,caption,description,icon&since=%s&until=%s&limit=100&access_token=%s
+					 https://graph.facebook.com/v2.0/%s/posts?summary=1&filter=stream&fields=likes.summary(true),comments.summary(true),shares,message,from,type,status_type,picture,link,source,name,caption,description,icon,created_time&since=%s&until=%s&limit=25&access_token=%s
 				  ''' % (fanpage, since, until, oauth_access_token)
 
 	else:
 		request_url = '''
-					 https://graph.facebook.com/v2.0/%s/posts?summary=1&filter=stream&fields=likes.summary(true),comments.summary(true),shares,message,from,type,status_type,picture,link,source,name,caption,description,icon&limit=100&access_token=%s
+					 https://graph.facebook.com/v2.0/%s/posts?summary=1&filter=stream&fields=likes.summary(true),comments.summary(true),shares,message,from,type,status_type,picture,link,source,name,caption,description,icon,created_time&limit=25&access_token=%s
 				  ''' % (fanpage, oauth_access_token)
 	
 	
-	posts_count = 0
+	requests_count = 0
 	posts_data = []
 
 	data_filename = 'posts_data_%s.csv' % fanpage
@@ -96,10 +102,10 @@ def retrieve_posts(fanpage, since, until, oauth_access_token, max_number):
 
 			save_posts(fanpage, data_filename, parsed_data)
 
-			posts_count += len(data['data'])
+			requests_count += 1
 
-			if (posts_count % 100) == 0:
-				print "%d posts retrieved." % posts_count
+			if (requests_count % 4) == 0:
+				print "%d posts retrieved." % (requests_count * 25)
 
 			try:
 
@@ -111,7 +117,7 @@ def retrieve_posts(fanpage, since, until, oauth_access_token, max_number):
 
 	# Retrieve posts until the limit is reached
 	else:
-		while posts_count < max_number:
+		while requests_count < max_number:
 			data = json.load(urllib.urlopen(request_url))
 			try:
 				posts_data = data['data']
@@ -122,10 +128,10 @@ def retrieve_posts(fanpage, since, until, oauth_access_token, max_number):
 
 			save_posts(fanpage, data_filename, parsed_data)
 
-			posts_count += len(data['data'])
+			requests_count += 1
 
-			if (posts_count % 100) == 0:
-				print "%d posts retrieved." % posts_count
+			if (requests_count % 4) == 0:
+				print "%d posts retrieved." % (requests_count * 25)
 
 			try:
 				request_url = data['paging']['next']
@@ -147,9 +153,10 @@ def parse_posts(data):
 
 	for post in data:
 		message = unicode(post['message']).encode("utf-8") if "message" in post.keys() else ""
+		message = message.replace('\n', ' ').replace('\r', '')
+
 		match = re.match('(?P<year>[0-9]{4})-(?P<month>[0-9]{2})-(?P<day>[0-9]{2})T(?P<hour>[0-9]{2}):(?P<min>[0-9]{2}):(?P<sec>[0-9]{2})\+0000', post['created_time'])
 		datetime = match.groupdict()
-
 
 		parsed_data.append(
 					[post['id'],
@@ -183,7 +190,7 @@ def retrieve_comments(fanpage, oauth_access_token, max_number):
 		
 		fanpage..............The FanPage name where comments will be retrieved from.
 	    oauth_access_token...Facebook API access token.
-	    max_number...........Maximum number of posts to be retrieved. If 0, all comments will be retrieved.
+	    max_number...........Maximum number of requests to retrieve comments. If 0, all comments will be retrieved.
 	"""
 
 	posts_df = pandas.read_csv('data/%s/posts/posts_data_%s.csv' % (fanpage, fanpage))
@@ -221,7 +228,7 @@ def retrieve_comments(fanpage, oauth_access_token, max_number):
 						 https://graph.facebook.com/v2.0/%s/comments?&limit=100&access_token=%s
 					  ''' % (post_id, oauth_access_token)
 
-		current_comments_count = 0
+		comments_requests_count = 0
 		comments_data = []
 
 		data_filename = '%s__%s_comments.csv' % (date, post_id)
@@ -243,11 +250,11 @@ def retrieve_comments(fanpage, oauth_access_token, max_number):
 
 				save_comments(fanpage, data_filename, parsed_data)
 
-				current_comments_count += len(data['data'])
+				comments_requests_count += 1
 				total_comments_count += len(data['data'])
 
-				if (current_comments_count % 1000) == 0:
-					print "%d comments retrieved." % current_comments_count
+				if (comments_requests_count % 10) == 0:
+					print "%d comments retrieved." % (comments_requests_count * 25)
 
 				try:
 
@@ -259,7 +266,7 @@ def retrieve_comments(fanpage, oauth_access_token, max_number):
 
 		# Retrieve posts until the limit is reached
 		else:
-			while current_comments_count < max_number:
+			while comments_requests_count < max_number:
 				data = json.load(urllib.urlopen(request_url))
 				try:
 					comments_data = data['data']
@@ -270,11 +277,11 @@ def retrieve_comments(fanpage, oauth_access_token, max_number):
 
 				save_comments(fanpage, data_filename, parsed_data)
 
-				current_comments_count += len(data['data'])
+				comments_requests_count += 1
 				total_comments_count += len(data['data'])
 
-				if (current_comments_count % 1000) == 0:
-					print "%d comments retrieved." % current_comments_count
+				if (comments_requests_count % 10) == 0:
+					print "%d comments retrieved." % (comments_requests_count * 25)
 
 				try:
 					request_url = data['paging']['next']
@@ -283,7 +290,7 @@ def retrieve_comments(fanpage, oauth_access_token, max_number):
 					print "End of pages for comments."
 					break
 
-		print "Post %d\tComments Retrieved %d\t ID %s" % (index, current_comments_count, post_id)
+		print "Post %d\tComments Retrieved %d\t ID %s" % (index, comments_requests_count, post_id)
 		print "Total Comments Retrieved %d" % total_comments_count
 
 
@@ -301,6 +308,8 @@ def parse_comments(post_id, data):
 
 	for comment in data:
 		message = unicode(comment['message']).encode("utf-8") if "message" in comment.keys() else ""
+		message = message.replace('\n', ' ').replace('\r', '')
+
 		match = re.match('(?P<year>[0-9]{4})-(?P<month>[0-9]{2})-(?P<day>[0-9]{2})T(?P<hour>[0-9]{2}):(?P<min>[0-9]{2}):(?P<sec>[0-9]{2})\+0000', comment['created_time'])
 		datetime = match.groupdict()
 

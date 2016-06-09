@@ -9,10 +9,10 @@ In order to run the code, first set the configs in the `config.xml` file, which 
 
 - fanpage: the Facebook FanPage to work on.
 - accessToken: a valid Facebook API access token, which can be obtained [here](https://developers.facebook.com/tools/explorer/)
-- posts quantity: the maximum number of posts to be retrieved.
+- posts requests: the maximum number of requests to retrieve posts (Each request returns up to 25 posts available per fanpage).
 - since: Since when posts should be retrieved.
 - until: Until when posts should be retrieved.
-- comments quantity: the maximum number of comments to be retrieved from posts.
+- comments requests: the maximum number of requests to retrieve comments (Each request returns up to 100 comments available per post).
 
 
 **Data**

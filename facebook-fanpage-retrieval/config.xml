@@ -3,19 +3,21 @@
 
 	<general>
 		<fanpage>PrefsCuritiba</fanpage>
-		<accessToken>CAACEdEose0cBALEjZBCnLlSi1PBwlhxDDGG027RFz8gFJYBRgBaHusV96GFZCYZA3mbZAtNkrwusu1Lj9w1GJQ5AXVBrTEDjdhydmlKWcf3qp1787BZAQJBGZB3LcDjCx3p8R1GbufyytVzZAh0YNpaFMP2GwpGEoDUcycja0x1XpMKMdm55FOSIgQp2lDNwZCDb56nejd8r22rZCFbfg4nOr</accessToken>
+		<accessToken></accessToken>
 	</general>
 
 	<posts>
-		<!-- Value 0 means no limit for number of posts to be retrieved. -->
-		<quantity>100</quantity>
+		<!-- Value 0 means no limit for number of request to retrieve posts. -->
+		<!-- Each request returns 25 posts. -->
+		<quantity>1</quantity>
 		<since></since>
 		<until></until>
 	</posts>
 
 	<comments>
-		<!-- Value 0 means no limit for number of comments to be retrieved per post. -->
-		<quantity>100</quantity>
+		<!-- Value 0 means no limit for number of request to retrieve comments. -->
+		<!-- Each request returns 100 comments. -->
+		<quantity>1</quantity>
 	</comments>
 
 </config>
