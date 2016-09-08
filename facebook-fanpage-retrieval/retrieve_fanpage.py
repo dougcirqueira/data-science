@@ -21,6 +21,7 @@ import csv
 import re
 import sys
 import os
+import time
 import xml.etree.ElementTree as ET
 
 reload(sys)
@@ -36,7 +37,8 @@ def retrieve_posts(fanpage, since, until, oauth_access_token, max_number):
 	    max_number...........Maximum number of request to retrieve posts. If 0, all posts will be retrieved.
 	"""
 
-	if since != None and until != None:
+	if since != None or until != None:
+		print 'Since and/or Until present'
 
 		if since == None:
 			since = ''
@@ -44,17 +46,37 @@ def retrieve_posts(fanpage, since, until, oauth_access_token, max_number):
 		if until == None:
 			until = ''
 
+		"""
 		request_url = '''
-					 https://graph.facebook.com/v2.0/%s/posts?summary=1&filter=stream&fields=likes.summary(true),comments.summary(true),shares,message,from,type,status_type,picture,link,source,name,caption,description,icon,created_time&since=%s&until=%s&limit=25&access_token=%s
+					 https://graph.facebook.com/v2.0/%s/posts?summary=1&filter=stream&fields=likes.summary(true),comments.summary(true),shares,message,from,type,status_type,picture,link,source,name,caption,description,icon&since=%s&until=%s&limit=100&access_token=%s
 				  ''' % (fanpage, since, until, oauth_access_token)
+		"""
+
+		request_url = '''
+					 https://graph.facebook.com/v2.0/%s/posts?summary=1&filter=stream&fields=likes.summary(true),comments.summary(true),shares,message,from,type,picture,description&until=%s&limit=25&access_token=%s
+				  ''' % (fanpage, until, oauth_access_token)
+
 
 	else:
+		print 'No since and until'
+
 		request_url = '''
-					 https://graph.facebook.com/v2.0/%s/posts?summary=1&filter=stream&fields=likes.summary(true),comments.summary(true),shares,message,from,type,status_type,picture,link,source,name,caption,description,icon,created_time&limit=25&access_token=%s
+					 https://graph.facebook.com/v2.6/%s/posts?summary=1&filter=stream&fields=likes.summary(true),comments.summary(true),reactions.type(LOVE).summary(true),shares,message,from,type,picture,description,created_time&limit=25&access_token=%s
 				  ''' % (fanpage, oauth_access_token)
+
+		"""
+		request_url = '''
+					 https://graph.facebook.com/v2.0/%s/posts?summary=1&filter=stream&fields=likes.summary(true),comments.summary(true),shares,message,from,type,picture,description&limit=25&access_token=%s
+				  ''' % (fanpage, oauth_access_token)
+		"""
+
+		"""
+		request_url = '''
+					 https://graph.facebook.com/v2.0/%s/posts?summary=1&filter=stream&fields=likes.summary(true),comments.summary(true),shares,message,from,type,status_type,picture,link,source,name,caption,description,icon&limit=100&access_token=%s
+				  ''' % (fanpage, oauth_access_token)
+		"""
 	
-	
-	requests_count = 0
+	posts_requests_count = 0
 	posts_data = []
 
 	data_filename = 'posts_data_%s.csv' % fanpage
@@ -64,17 +86,16 @@ def retrieve_posts(fanpage, since, until, oauth_access_token, max_number):
 				["Id",
 				"Message",
 				"Likes",
+				"Love",
+				"Wow",
+				"Haha",
+				"Sad",
+				"Angry",
 				"Comments",
 				"Shares",
 				"Type",
-				"StatusType",
 				"Picture",
-				"Link",
-				"Source",
-				"Name",
-				"Caption",
 				"Description",
-				"Icon",
 				"CreatedTime",
 				"Day",
 				"Month",
@@ -84,6 +105,7 @@ def retrieve_posts(fanpage, since, until, oauth_access_token, max_number):
 				"Seconds"]
 			]
 
+
 	# Save variable names in posts csv file.
 	save_variable_names(fanpage, data_filename, variable_names, 'posts')
 
@@ -92,20 +114,29 @@ def retrieve_posts(fanpage, since, until, oauth_access_token, max_number):
 		while True:
 			data = json.load(urllib.urlopen(request_url))
 
+			print data.keys()
+			#sys.exit()
+
+			if 'error' in data.keys():
+				print 'Error Found'
+				print data['error']
+
+				sys.exit()
+
 			try:
 				posts_data = data['data']
 			except KeyError:
 				raise KeyError("Your access_token is probably invalid or has expired.")
 			
 
-			parsed_data = parse_posts(posts_data)
+			parsed_data = parse_posts_with_reactions(posts_data, oauth_access_token)
 
 			save_posts(fanpage, data_filename, parsed_data)
 
-			requests_count += 1
+			posts_requests_count += 1
 
-			if (requests_count % 4) == 0:
-				print "%d posts retrieved." % (requests_count * 25)
+			if (posts_requests_count % 4) == 0:
+				print "%d posts retrieved." % (posts_requests_count * 25)
 
 			try:
 
@@ -117,21 +148,29 @@ def retrieve_posts(fanpage, since, until, oauth_access_token, max_number):
 
 	# Retrieve posts until the limit is reached
 	else:
-		while requests_count < max_number:
+		while posts_requests_count < max_number:
 			data = json.load(urllib.urlopen(request_url))
+			print data.keys()
+
+			if 'error' in data.keys():
+				print 'Error Found'
+				print data['error']
+
+				sys.exit()
+
 			try:
 				posts_data = data['data']
 			except KeyError:
 				raise KeyError("Your access_token is probably invalid or has expired.")
 
-			parsed_data = parse_posts(posts_data)
+			parsed_data = parse_posts_with_reactions(posts_data, oauth_access_token)
 
 			save_posts(fanpage, data_filename, parsed_data)
 
-			requests_count += 1
+			posts_requests_count += 1
 
-			if (requests_count % 4) == 0:
-				print "%d posts retrieved." % (requests_count * 25)
+			if (posts_requests_count % 4) == 0:
+				print "%d posts retrieved." % (posts_requests_count * 25)
 
 			try:
 				request_url = data['paging']['next']
@@ -165,14 +204,88 @@ def parse_posts(data):
 					post['comments']['summary']['total_count'] if 'comments' in post.keys() else 0,
 					post['shares']['count'] if 'shares' in post.keys() else 0,
 					post['type'] if 'type' in post.keys() else '',
-					post['status_type'] if 'status_type' in post.keys() else '',
 					post['picture'] if 'picture' in post.keys() else '',
-					post['link'] if 'link' in post.keys() else '',
-					post['source'] if 'source' in post.keys() else '',
-					post['name'] if 'name' in post.keys() else '',
-					post['caption'] if 'caption' in post.keys() else '',
 					post['description'] if 'description' in post.keys() else '',
-					post['icon'] if 'icon' in post.keys() else '',
+					post['created_time'],
+					datetime['day'],
+					datetime['month'],
+					datetime['year'],
+					datetime['hour'],
+					datetime['min'],
+					datetime['sec']]
+				)
+
+	return parsed_data
+
+
+def parse_posts_with_reactions(data, oauth_access_token):
+	""" This method parses posts to be saved in a csv file.
+		
+		data.................Data with posts returned by Facebook API call.
+
+	    Returns:
+	      A list of lists with Facebook posts data parsed.
+	"""
+
+	parsed_data = []
+	# LOVE reactions has been already retrieved.
+	reactions = ['WOW', 'HAHA', 'SAD', 'ANGRY']
+
+	for post in data:
+
+		message = unicode(post['message']).encode("utf-8") if "message" in post.keys() else ""
+		message = message.replace('\n', ' ').replace('\r', '')
+
+		match = re.match('(?P<year>[0-9]{4})-(?P<month>[0-9]{2})-(?P<day>[0-9]{2})T(?P<hour>[0-9]{2}):(?P<min>[0-9]{2}):(?P<sec>[0-9]{2})\+0000', post['created_time'])
+		datetime = match.groupdict()
+
+		reactions_dict = {}
+
+		# Retrieve Reactions
+		for reaction in reactions:
+			request_url_reactions = '''
+						 https://graph.facebook.com/v2.6/%s?summary=1&fields=reactions.type(%s).summary(true)&access_token=%s
+					  ''' % (post['id'], reaction, oauth_access_token)
+
+
+			data_reactions = json.load(urllib.urlopen(request_url_reactions))
+
+
+
+
+			if 'error' in data_reactions.keys():
+				print 'Error Found'
+				print data_reactions['error']
+
+				sys.exit()
+
+			try:
+				posts_data_reactions = data_reactions['reactions']
+
+				reactions_dict[reaction] = posts_data_reactions['summary']['total_count']
+			except KeyError:
+				print 'EXCEPTION: NO REACTION %s' % reaction
+				reactions_dict[reaction] = 0
+
+
+		if 'total_count' not in post['comments']['summary'].keys():
+			print 'total_count for comments no found.'
+			continue
+
+		parsed_data.append(
+					[post['id'],
+					message,
+					post['likes']['summary']['total_count'] if 'likes' in post.keys() else 0,
+					post['reactions']['summary']['total_count'] if 'reactions' in post.keys() else 0 , # LOVE reaction
+					reactions_dict['WOW'],
+					reactions_dict['HAHA'],
+					reactions_dict['SAD'],
+					reactions_dict['ANGRY'],
+					post['comments']['summary']['total_count'] if 'comments' in post.keys() else 0,
+					post['shares']['count'] if 'shares' in post.keys() else 0,
+					post['type'] if 'type' in post.keys() else '',
+					post['picture'] if 'picture' in post.keys() else '',
+					post['description'] if 'description' in post.keys() else '',
 					post['created_time'],
 					datetime['day'],
 					datetime['month'],
@@ -215,6 +328,8 @@ def retrieve_comments(fanpage, oauth_access_token, max_number):
 				"Seconds"]
 			]
 
+	save_variable_names_sa(fanpage, variable_names)
+
 	# Save variable names in all_comments csv file.
 	save_variable_names(fanpage, 'all_comments.csv', variable_names, 'comments')
 
@@ -250,11 +365,13 @@ def retrieve_comments(fanpage, oauth_access_token, max_number):
 
 				save_comments(fanpage, data_filename, parsed_data)
 
+				save_comments_sa(fanpage, data_filename, parsed_data)
+
 				comments_requests_count += 1
 				total_comments_count += len(data['data'])
 
 				if (comments_requests_count % 10) == 0:
-					print "%d comments retrieved." % (comments_requests_count * 25)
+					print "%d comments retrieved." % (comments_requests_count * 100)
 
 				try:
 
@@ -277,11 +394,13 @@ def retrieve_comments(fanpage, oauth_access_token, max_number):
 
 				save_comments(fanpage, data_filename, parsed_data)
 
-				comments_requests_count += 1
+				save_comments_sa(fanpage, data_filename, parsed_data)
+
+				comments_requests_count += len(data['data'])
 				total_comments_count += len(data['data'])
 
 				if (comments_requests_count % 10) == 0:
-					print "%d comments retrieved." % (comments_requests_count * 25)
+					print "%d comments retrieved." % (comments_requests_count * 100)
 
 				try:
 					request_url = data['paging']['next']
@@ -290,7 +409,7 @@ def retrieve_comments(fanpage, oauth_access_token, max_number):
 					print "End of pages for comments."
 					break
 
-		print "Post %d\tComments Retrieved %d\t ID %s" % (index, comments_requests_count, post_id)
+		print "Post %d\tComments Retrieved %d\t ID %s" % (index, (comments_requests_count * 100), post_id)
 		print "Total Comments Retrieved %d" % total_comments_count
 
 
@@ -373,6 +492,20 @@ def save_variable_names(fanpage, data_filename, variable_names, data_type):
 			csv_writer.writerows(variable_names)
 
 
+def save_variable_names_sa(fanpage, variable_names):
+	""" This method writes variable names in csv files for sentiment analysis.
+		
+		fanpage..............The Facebook fanpage.
+		variable_names.......Variable names to be saved on the top of a csv file.
+	"""
+
+	path_data = 'data/%s/comments/all_comments.csv' % (fanpage)
+
+	with open(path_data, 'w') as fp:
+		csv_writer = csv.writer(fp, delimiter=',')
+		csv_writer.writerows(variable_names)
+
+
 def save_posts(fanpage, data_filename, data):
 	""" This method saves posts in a csv file.
 		
@@ -384,6 +517,20 @@ def save_posts(fanpage, data_filename, data):
 	path = 'data/%s/posts/' % fanpage
 
 	with open(path + data_filename, 'a') as fp:
+		csv_writer = csv.writer(fp, delimiter=',')
+		csv_writer.writerows(data)
+
+
+def save_comments_sa(fanpage, data_filename, data):
+	""" This method saves comments in a csv file for sentiment analysis.
+		
+		fanpage..............The Facebook fanpage.
+		data_filename........The name of csv file to be saved.
+		data.................Parsed data to be saved.
+	"""
+	path = 'data/%s/comments/' % fanpage
+
+	with open(path + '%s_all_comments.csv' % fanpage, 'a') as fp:
 		csv_writer = csv.writer(fp, delimiter=',')
 		csv_writer.writerows(data)
 
@@ -504,7 +651,7 @@ def main():
 	check_paths(config.fanpage)
 
 	retrieve_posts(config.fanpage, config.posts_since, config.posts_until, config.access_token, config.posts_quantity)
-	
+
 	compute_statistics(config.fanpage)
 
 	retrieve_comments(config.fanpage, config.access_token, config.comments_quantity)
